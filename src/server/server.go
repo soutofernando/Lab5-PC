@@ -40,14 +40,17 @@ func newServer() *server {
 }
 
 func (s *server) SendFileHashes(ctx context.Context, req *pb.FileHashes) (*pb.Response, error) {
-	clientIP, _ := getClientIP(ctx)
-	
+	clientIP, err := getClientIP(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, hash := range req.Hashes {
 		s.mu.Lock()
 		s.fileMap[hash] = append(s.fileMap[hash], clientIP)
 		s.mu.Unlock()
 	}
-	
+
 	return &pb.Response{Message: "Hashes received"}, nil
 }
 
@@ -63,7 +66,47 @@ func getClientIP(ctx context.Context) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("erro ao obter IP do cliente")
 	}
-	return pr.Addr.String(), nil
+
+	addr := pr.Addr.String()
+	ip, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", fmt.Errorf("erro ao dividir host e porta: %v", err)
+	}
+
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return "", fmt.Errorf("erro ao analisar IP: %v", ip)
+	}
+
+	if parsedIP.IsLoopback() {
+		return getRealMachineIP()
+	}
+
+	
+	return parsedIP.String(), nil
+}
+
+func getRealMachineIP() (string, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", fmt.Errorf("erro ao obter interfaces: %v", err)
+	}
+
+	for _, iface := range interfaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return "", fmt.Errorf("erro ao obter endereços da interface %v: %v", iface.Name, err)
+		}
+
+		for _, addr := range addrs {
+			ipnet, ok := addr.(*net.IPNet)
+			if ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("nenhum IP real encontrado")
 }
 
 func (s *server) run() {
