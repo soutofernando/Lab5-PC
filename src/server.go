@@ -7,7 +7,7 @@ import (
 	"net"
 	"sync"
 
-	pb "../proto/fileSearch"
+	pb "grpc-filesharing/fileSearch"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"

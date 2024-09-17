@@ -1,6 +1,8 @@
 syntax = "proto3";
 
-package filesearch;
+package pb;
+
+option go_package =  "/fileSearch";
 
 service FileSearch {
   rpc SendFileHashes(FileHashes) returns (Response) {}
