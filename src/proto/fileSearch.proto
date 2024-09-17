@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package filesearch;
+
+service FileSearch {
+  rpc SendFileHashes(FileHashes) returns (Response) {}
+
+  rpc GetMachinesWithFile(FileHash) returns (FileLocations) {}
+}
+
+message FileHash {
+  string hash = 1;
+}
+
+message FileHashes {
+  repeated string hashes = 1;
+}
+
+message Response {
+  string message = 1;
+}
+
+message FileLocations {
+  repeated string ips = 1;
+}
