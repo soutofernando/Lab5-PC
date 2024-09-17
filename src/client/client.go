@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"net"
 	"os"
 	"time"
 
@@ -10,6 +12,22 @@ import (
 
 	"google.golang.org/grpc"
 )
+
+func GetLocalIP() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+
+	for _, addr := range addrs {
+		if ipNet, ok := addr.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
+			if ipNet.IP.To4() != nil { 
+				return ipNet.IP.String(), nil
+			}
+		}
+	}
+	return "", fmt.Errorf("Não foi possível obter um endereço IP")
+}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -42,10 +60,17 @@ func main() {
 }
 
 func sendFileHashes(client pb.FileSearchClient, hashes []string) {
+	ip, err := GetLocalIP()
+	if err != nil {
+		log.Fatalf("Erro ao obter IP: %v", err)
+	}
+
+	log.Printf("Enviando hashes com IP: %s\n", ip)
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	_, err := client.SendFileHashes(ctx, &pb.FileHashes{Hashes: hashes})
+	_, err = client.SendFileHashes(ctx, &pb.FileHashes{Hashes: hashes})
 	if err != nil {
 		log.Fatalf("Erro ao enviar hashes: %v", err)
 	}
