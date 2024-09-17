@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v5.28.1
-// source: filesearch.proto
+// source: proto/filesearch.proto
 
 package fileSearch
 
@@ -155,5 +155,5 @@ var FileSearch_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "filesearch.proto",
+	Metadata: "proto/filesearch.proto",
 }
