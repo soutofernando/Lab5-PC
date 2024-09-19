@@ -6,23 +6,20 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
 func createFilesAndHash() error {
-	// Criar o diretório tmp/dataset/ se não existir
 	dir := "tmp/dataset/"
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		return fmt.Errorf("erro ao criar diretório: %v", err)
 	}
 
-	// Nomes dos arquivos
 	files := []string{"file1.txt", "file2.txt", "file3.txt", "file4.txt"}
 
-	// Map para armazenar os hashes
-	fileHashes := make(map[string]string)
+	fileHashes := make([]string, 0, len(files))
 
-	// Criar arquivos e calcular hashes
 	for _, file := range files {
 		path := filepath.Join(dir, file)
 		content := fmt.Sprintf("Conteúdo de %s", file)
@@ -30,50 +27,64 @@ func createFilesAndHash() error {
 			return fmt.Errorf("erro ao criar arquivo %s: %v", file, err)
 		}
 
-		// Calcular o hash SHA-256 do arquivo
 		hash, err := calculateHash(path)
 		if err != nil {
 			return fmt.Errorf("erro ao calcular hash de %s: %v", file, err)
 		}
 
-		// Armazenar o hash no map
-		fileHashes[file] = hash
+		fileHashes = append(fileHashes, hash)
 	}
 
-	// Imprimir os hashes no final
 	fmt.Println("Hashes dos arquivos:")
-	for file, hash := range fileHashes {
-		fmt.Printf("%s: %s\n", file, hash)
+	for i, hash := range fileHashes {
+		fmt.Printf("file%d.txt: %s\n", i+1, hash)
+	}
+
+	if err := sendHashes(fileHashes); err != nil {
+		return fmt.Errorf("erro ao enviar hashes: %v", err)
 	}
 
 	return nil
 }
 
 func calculateHash(filePath string) (string, error) {
-	// Abrir o arquivo
 	file, err := os.Open(filePath)
 	if err != nil {
 		return "", err
 	}
 	defer file.Close()
 
-	// Inicializar o hash SHA-256
 	hasher := sha256.New()
 
-	// Copiar o conteúdo do arquivo para o hasher
 	if _, err := io.Copy(hasher, file); err != nil {
 		return "", err
 	}
 
-	// Retornar o hash em formato hexadecimal
 	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
+func sendHashes(hashes []string) error {
+	clientPath, err := filepath.Abs("../src/client/client.go")
+	if err != nil {
+		return fmt.Errorf("erro ao resolver o caminho absoluto : %v", err)
+	}
+	args := append([]string{"run", clientPath, "send"}, hashes...)
+
+	cmd := exec.Command("go", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("erro ao executar comando: %v", err)
+	}
+
+	return nil
+}
+
 func main() {
-	// Executar a função para criar arquivos e calcular hashes
 	if err := createFilesAndHash(); err != nil {
 		fmt.Println("Erro:", err)
 	} else {
-		fmt.Println("Arquivos criados e hashes calculados com sucesso!")
+		fmt.Println("Arquivos criados, hashes calculados e enviados com sucesso!")
 	}
 }
